@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -43,11 +45,12 @@ public class JGitProducer extends DefaultProducer {
         // TODO: extract from headers as well
         final JGitReflect reflect = endpoint.getJGitReflect();
         final String commandName = endpoint.getCommand();
+        final Map<String, Object> parameters = endpoint.getParameters();
         final TypeConverter converter = endpoint.getCamelContext().getTypeConverter();
 
         Callable<?> command = reflect.getCommand(commandName);
         if (command == null) {
-            Object repo = endpoint.getParameters().get("repo");
+            Object repo = parameters.get("repo");
             if (repo == null) {
                 repo = exchange.getIn().getBody();
             }
@@ -55,10 +58,18 @@ public class JGitProducer extends DefaultProducer {
         }
         LOG.trace("resolved {} to {}", endpoint.getCommand(), command);
 
-        if (!IntrospectionSupport.setProperties(
+        final Map<String,Object> remainingProperties = new HashMap<>(parameters);
+        IntrospectionSupport.setProperties(
                 converter,
-                command, endpoint.getParameters())) {
-            throw new IllegalArgumentException("Invalid properties");
+                command,
+                remainingProperties);
+        if (!remainingProperties.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Invalid properties for " +
+                            command.getClass().getName() +
+                            ": " +
+                            remainingProperties.keySet()
+            );
         }
 
         exchange.getIn().setBody(command.call());

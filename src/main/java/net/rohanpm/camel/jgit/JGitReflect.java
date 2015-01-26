@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -15,10 +16,13 @@ import java.util.concurrent.Callable;
 public class JGitReflect {
     private static final Logger LOG = LoggerFactory.getLogger(JGitReflect.class);
 
-    private final Map<String,Method> staticCommands = new HashMap<>();
-    private final Map<String,Method> repoCommands = new HashMap<>();
+    private final Map<String,Method> staticCommands;
+    private final Map<String,Method> repoCommands;
 
     public JGitReflect() {
+        final Map<String,Method> staticCommands = new HashMap<>();
+        final Map<String,Method> repoCommands = new HashMap<>();
+
         final Method[] methods = Git.class.getDeclaredMethods();
         for (Method m : methods) {
             final String methodName = m.getName();
@@ -35,6 +39,17 @@ public class JGitReflect {
                 repoCommands.put(methodName, m);
             }
         }
+
+        this.repoCommands = Collections.unmodifiableMap(repoCommands);
+        this.staticCommands = Collections.unmodifiableMap(staticCommands);
+    }
+
+    public boolean hasCommand(String name) {
+        return staticCommands.containsKey(name);
+    }
+
+    public boolean hasRepoCommand(String name) {
+        return repoCommands.containsKey(name);
     }
 
     public Callable<?> getCommand(String name) {

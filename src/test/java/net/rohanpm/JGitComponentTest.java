@@ -16,17 +16,82 @@
  */
 package net.rohanpm;
 
+import net.rohanpm.camel.jgit.JGitComponent;
+import org.apache.camel.Exchange;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
+import org.apache.camel.component.properties.PropertiesComponent;
 import org.apache.camel.test.junit4.CamelTestSupport;
+import org.apache.commons.io.FileUtils;
+import org.eclipse.jgit.lib.*;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.util.Collections;
+
+import static org.mockito.Mockito.mock;
 
 public class JGitComponentTest extends CamelTestSupport {
+    @Produce(uri="direct:test-bad-parameter")
+    protected ProducerTemplate produceBadParameter;
+
+    @Produce(uri="direct:test-init")
+    protected ProducerTemplate produceInit;
+
+    private File tempDirectory;
+
+    @Override
+    protected void doPreSetup() throws Exception {
+        tempDirectory = Files.createTempDirectory("jgit-test").toFile();
+        tempDirectory.deleteOnExit();
+        System.setProperty("jgit-test.tmpdir", tempDirectory.getAbsolutePath());
+    }
+
+    @After
+    public void deleteTempDir() throws IOException {
+        FileUtils.deleteDirectory(tempDirectory);
+    }
 
     @Test
-    public void testJGit() throws Exception {
-        MockEndpoint mock = getMockEndpoint("mock:result");
-        mock.expectedMinimumMessageCount(1);
+    public void testBadParameter() throws Exception {
+        final MockEndpoint errorMock = getMockEndpoint("mock:error-bad-parameter");
+        final MockEndpoint resultMock = getMockEndpoint("mock:result-bad-parameter");
+
+        resultMock.expectedMessageCount(0);
+        errorMock.expectedMessageCount(1);
+
+        errorMock.expectedMessagesMatches(
+                header(Exchange.EXCEPTION_CAUGHT).method("getMessage")
+                        .contains("Invalid properties for org.eclipse.jgit.api.FetchCommand: [badParameter]"));
+
+        produceBadParameter.sendBody(mock(Repository.class));
+
+        assertMockEndpointsSatisfied();
+    }
+
+    @Test
+    public void testInit() throws InterruptedException {
+        final MockEndpoint mock = getMockEndpoint("mock:result-init");
+
+        mock.expectedMessageCount(1);
+        mock.expectedMessagesMatches(
+                body().isInstanceOf(Repository.class));
+        mock.expectedMessagesMatches(
+                body().method("isBare").isEqualTo(true));
+        mock.expectedMessagesMatches(
+                body().method("getDirectory").isEqualTo(tempDirectory.toPath().resolve("some-repo").toFile()));
+
+        produceInit.sendBody(null);
 
         assertMockEndpointsSatisfied();
     }
@@ -35,14 +100,18 @@ public class JGitComponentTest extends CamelTestSupport {
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() {
-                from("timer:oneshot?delay=0&repeatCount=1")
-                  .to("jgit://init?directory=/tmp/jgit-init-test&bare=true")
-                  .to("jgit://fetch?remote=https://github.com/rohanpm/Gerrit-Client.git&refSpecs=refs/heads/*:refs/heads/*")
-                  .to("mock:result");
+                from("direct:test-bad-parameter")
+                        .onException(Throwable.class)
+                            .handled(true)
+                            .to("mock:error-bad-parameter")
+                        .end()
+                        .to("jgit://fetch?remote=git://git.example.com/repo&badParameter=quux")
+                        .to("mock:result-bad-parameter");
 
-                from("timer:oneshot?delay=0&repeatCount=1")
-                        .to("jgit://lsRemoteRepository?remote=https://github.com/rohanpm/Gerrit-Client.git&heads=true&tags=true")
-                        .to("mock:result2");
+                from("direct:test-init")
+                        .to("jgit:init?directory={{jgit-test.tmpdir}}/some-repo&bare=true")
+                        .convertBodyTo(Repository.class)
+                        .to("mock:result-init");
             }
         };
     }

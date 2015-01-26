@@ -79,4 +79,12 @@ public class JGitEndpoint extends DefaultEndpoint {
     public void setJGitReflect(JGitReflect jGitReflect) {
         this.jGitReflect = jGitReflect;
     }
+
+    public void check() {
+        if (jGitReflect.hasCommand(command) || jGitReflect.hasRepoCommand(command)) {
+            return;
+        }
+
+        throw new IllegalArgumentException(command + " is not a valid jgit command");
+    }
 }

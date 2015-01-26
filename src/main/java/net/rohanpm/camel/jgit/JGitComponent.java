@@ -30,7 +30,7 @@ public class JGitComponent extends DefaultComponent {
 
     private static final Logger LOG = LoggerFactory.getLogger(JGitComponent.class);
 
-    private JGitReflect jGitReflect;
+    private JGitReflect jGitReflect = new JGitReflect();
 
     protected Endpoint createEndpoint(String uri, String remaining, Map<String, Object> parameters) throws Exception {
         LOG.debug("createEndPoint {} {} {}", new Object[]{uri, remaining, parameters});
@@ -38,14 +38,8 @@ public class JGitComponent extends DefaultComponent {
         setProperties(endpoint, parameters);
         endpoint.setCommand(remaining);
         endpoint.setParameters(parameters);
-        endpoint.setJGitReflect(getJGitReflect());
+        endpoint.setJGitReflect(jGitReflect);
+        endpoint.check();
         return endpoint;
-    }
-
-    private JGitReflect getJGitReflect() {
-        if (jGitReflect == null) {
-            jGitReflect = new JGitReflect();
-        }
-        return jGitReflect;
     }
 }
