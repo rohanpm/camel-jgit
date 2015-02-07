@@ -24,6 +24,32 @@
   <version>1.0.0-SNAPSHOT</version>
 
   <name>Camel JGit Component</name>
+  <description>
+    A Camel component for invoking git operations using the JGit library.
+  </description>
+  <url>https://github.com/rohanpm/camel-jgit</url>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Rohan McGovern</name>
+      <email>rohan@mcgovern.id.au</email>
+      <organization>github</organization>
+      <organizationUrl>https://github.com/rohanpm</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/rohanpm/camel-jgit.git</connection>
+    <developerConnection>scm:git:git@github.com:rohanpm/camel-jgit.git</developerConnection>
+    <url>https://github.com/rohanpm/camel-jgit</url>
+  </scm>
 
   <dependencies>
     <dependency>
